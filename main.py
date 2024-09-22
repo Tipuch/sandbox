@@ -9,7 +9,6 @@ from inertia import (
     InertiaResponse,
     inertia_request_validation_exception_handler,
     InertiaConfig,
-    lazy,
 )
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -32,7 +31,6 @@ def get_config():
 config = get_config()
 
 app = FastAPI()
-app.add_middleware(SessionMiddleware, secret_key="secret_key")
 app.add_exception_handler(
     InertiaVersionConflictException,
     inertia_version_conflict_exception_handler,
@@ -41,6 +39,7 @@ app.add_exception_handler(
     RequestValidationError,
     inertia_request_validation_exception_handler,
 )
+app.add_middleware(SessionMiddleware, secret_key="secret_key")
 
 manifest_json = os.path.join(
     os.path.dirname(__file__), "static", "dist", "manifest.json"
@@ -52,7 +51,7 @@ inertia_config = InertiaConfig(
     environment="development",
     use_flash_messages=True,
     use_flash_errors=True,
-    entrypoint_filename="main.ts",
+    entrypoint_filename="main.js",
     assets_prefix="/src",
 )
 
@@ -70,6 +69,5 @@ app.mount(
 async def index(inertia: InertiaDep) -> InertiaResponse:
     props = {
         "message": "hello from index",
-        "lazy_prop": lazy(lambda: "hello from lazy prop"),
     }
-    return await inertia.render("IndexPage", props)
+    return await inertia.render("index", props)

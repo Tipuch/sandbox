@@ -1,11 +1,14 @@
-<script lang="ts">
+<script>
   import svelteLogo from "../assets/svelte.svg";
   import viteLogo from "../assets/vite.svg";
-  import Counter from "../lib/Counter.svelte";
+  export let messages;
+  export let errors;
+  export let message;
 </script>
 
 <main>
   <div>
+    <h4>{message}</h4>
     <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
       <img src={viteLogo} class="logo" alt="Vite Logo" />
     </a>
@@ -15,9 +18,7 @@
   </div>
   <h1>Vite + Svelte</h1>
 
-  <div class="card">
-    <Counter />
-  </div>
+  <div class="card"></div>
 
   <p>
     Check out <a
