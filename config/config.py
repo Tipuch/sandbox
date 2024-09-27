@@ -2,18 +2,16 @@ import os
 
 from fastapi.templating import Jinja2Templates
 from inertia import InertiaConfig
+from pathlib import Path
 
 
 class Config:
-    SECRET_KEY = os.environ["SECRET_KEY"]
+    SECRET_KEY = os.environ.get("SECRET_KEY")
 
-    TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
+    TEMPLATES_DIR = Path("./templates").resolve()
 
-    MANIFEST_JSON = os.path.join(
-        os.path.dirname(__file__), "static", "dist", "manifest.json"
-    )
-
-    SVELTE_DIR = os.path.join(os.path.dirname(__file__), "static", "src")
+    MANIFEST_JSON = Path("./static/dist/manifest.json").resolve()
+    SVELTE_DIR = Path("./static/src").resolve()
 
     def get_templates(self):
         return Jinja2Templates(directory=self.TEMPLATES_DIR)
