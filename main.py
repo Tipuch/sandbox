@@ -12,37 +12,27 @@ from inertia import (
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Depends
-from config.dev import DevConfig
-
-
-def get_config():
-    if "ENV" not in os.environ:
-        return DevConfig()
-    else:
-        return DevConfig()
-
-
-config = get_config()
+from config.config import settings
 
 app = FastAPI()
 app.add_exception_handler(
     InertiaVersionConflictException,
-    inertia_version_conflict_exception_handler,
+    inertia_version_conflict_exception_handler,  # type: ignore
 )
 app.add_exception_handler(
     RequestValidationError,
-    inertia_request_validation_exception_handler,
+    inertia_request_validation_exception_handler,  # type: ignore
 )
-app.add_middleware(SessionMiddleware, secret_key=config.SECRET_KEY)
+app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
 InertiaDep = Annotated[
-    Inertia, Depends(inertia_dependency_factory(config.get_inertia_config()))
+    Inertia, Depends(inertia_dependency_factory(settings.get_inertia_config()))
 ]
 
-app.mount("/src", StaticFiles(directory=config.SVELTE_DIR), name="src")
+app.mount("/src", StaticFiles(directory=settings.SVELTE_DIR), name="src")
 app.mount(
     "/assets",
-    StaticFiles(directory=os.path.join(config.SVELTE_DIR, "assets")),
+    StaticFiles(directory=os.path.join(settings.SVELTE_DIR, "assets")),
     name="assets",
 )
 
