@@ -9,12 +9,12 @@ python = "^3.12"
 fastapi = "^0.111.0"
 sqlmodel = "^0.0.19"
 pydantic = "^2.7.4"
-pydant_settings = "^2.5.2"
+pydantic-settings = "^2.5.2"
 alembic = "^1.13.1"
 argon2-cffi = "^23.1"
 pyotp = "^2.9.0"
 fastapi-inertia = "^1.0"
-
+arrow = "^1.3"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4.10"

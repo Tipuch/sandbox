@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Session
-from main import config
+from config.config import settings
 
-engine = config.init_db()
+engine = settings.init_db()
 
 
 def init_db():

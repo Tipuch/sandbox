@@ -6,7 +6,7 @@ from sqlmodel import SQLModel
 
 from alembic import context
 
-from main import config as app_config
+from config.config import settings
 from models.user import User
 
 # this is the Alembic Config object, which provides
@@ -18,7 +18,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-db_url = app_config.DB_URL
+db_url = settings.DB_URL
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
