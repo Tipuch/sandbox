@@ -28,10 +28,15 @@ class User(SQLModel, table=True):
     pyotp_secret: str = Field(default="", max_length=500)
     pyotp_last_auth_at: Optional[datetime] = Field(default=None, nullable=True)
 
-    def encrypt_password(self, raw_password: str) -> str:
+    def encrypt_password(
+        self, raw_password: str, session: Session = Depends(get_session)
+    ) -> str:
         password_hasher = PasswordHasher()
         hash = password_hasher.hash(raw_password)
         self.password = hash
+        session.add(self)
+        session.commit()
+        session.refresh(self)
         return hash
 
     def verify_password(self, raw_password: str) -> bool:
