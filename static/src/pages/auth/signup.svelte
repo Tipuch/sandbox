@@ -79,6 +79,10 @@
           <span class="icon is-small is-right">
             <i class="fas fa-exclamation-triangle"></i>
           </span>
+        {:else}
+          <span class="icon is-small is-right">
+            <i class="fas fa-check"></i>
+          </span>
         {/if}
       </div>
       {#if passwordFieldWarning !== ""}
