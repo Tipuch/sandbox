@@ -1,18 +1,18 @@
 import os
-from typing import Annotated
 from fastapi.exceptions import RequestValidationError
 from inertia import (
     InertiaVersionConflictException,
     inertia_version_conflict_exception_handler,
-    Inertia,
-    inertia_dependency_factory,
     InertiaResponse,
     inertia_request_validation_exception_handler,
 )
 from starlette.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from config.config import settings
+from dependencies.inertia import InertiaDep
+from controllers import auth
+
 
 app = FastAPI()
 app.add_exception_handler(
@@ -25,10 +25,8 @@ app.add_exception_handler(
 )
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
-InertiaDep = Annotated[
-    Inertia, Depends(inertia_dependency_factory(settings.get_inertia_config()))
-]
 
+app.include_router(auth.router)
 app.mount("/src", StaticFiles(directory=settings.SVELTE_DIR), name="src")
 app.mount(
     "/assets",
