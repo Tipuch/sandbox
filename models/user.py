@@ -7,7 +7,7 @@ from fastapi import Depends
 from config.config import settings
 
 from argon2 import PasswordHasher
-from sqlmodel import Field, SQLModel, Session
+from sqlmodel import Field, SQLModel, Session, select
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from itsdangerous.exc import SignatureExpired
 
@@ -43,6 +43,17 @@ class User(SQLModel, table=True):
     confirmed_at: Optional[datetime] = Field(default=None, nullable=True)
     pyotp_secret: str = Field(default="", max_length=500, nullable=False)
     pyotp_last_auth_at: Optional[datetime] = Field(default=None, nullable=True)
+
+    @classmethod
+    def authenticate_user(
+        cls, email: str, password: str, session: Session = Depends(get_session)
+    ):
+        user = session.exec(select(cls).where(cls.email == email)).first()
+        if not user:
+            return False
+        if not user.verify_password(password):
+            return False
+        return user
 
     def encrypt_password(
         self, raw_password: str, session: Session = Depends(get_session)
