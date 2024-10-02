@@ -14,18 +14,34 @@ from itsdangerous.exc import SignatureExpired
 from db import get_session
 
 
+class UserCreate(SQLModel):
+    name: str = Field(max_length=500)
+    email: str = Field(max_length=500)
+    password: str = Field(max_length=250)
+
+
+class UserRead(SQLModel):
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+    name: str = Field(max_length=500)
+    email: str = Field(max_length=500)
+    active: bool
+    confirmed_at: datetime
+
+
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(default=datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )
-    name: str = Field(index=True, max_length=500)
-    email: str = Field(unique=True, default="", max_length=500)
-    password: str = Field(default="", max_length=250)
+    name: str = Field(index=True, max_length=500, nullable=False)
+    email: str = Field(unique=True, max_length=500, nullable=False)
+    password: str = Field(default="", max_length=250, nullable=False)
     active: bool = Field(default=True, nullable=False)
     confirmed_at: Optional[datetime] = Field(default=None, nullable=True)
-    pyotp_secret: str = Field(default="", max_length=500)
+    pyotp_secret: str = Field(default="", max_length=500, nullable=False)
     pyotp_last_auth_at: Optional[datetime] = Field(default=None, nullable=True)
 
     def encrypt_password(
