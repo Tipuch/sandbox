@@ -2,7 +2,6 @@
   import zxcvbn from "zxcvbn";
   export let messages;
   export let errors;
-  export let message;
 
   let formElement = null;
   let formErrorMessage = "";
@@ -76,6 +75,21 @@
         const response_json = await response.json();
         if (response.status !== 201) {
           formErrorMessage = response_json["detail"];
+        } else {
+          let loginFormData = new FormData();
+          loginFormData.append("username", email);
+          loginFormData.append("password", password);
+          const login_response = await fetch("/auth/token", {
+            method: "POST",
+            body: loginFormData,
+          });
+          if (login_response.status !== 200) {
+            formErrorMessage = "There was an error during the sign in process";
+          } else {
+            const jwt = await login_response.json();
+            window.sessionStorage.setItem("jwt", jwt);
+            location.href = "/auth/signup/success";
+          }
         }
       } catch (e) {
         console.error(e);

@@ -1,4 +1,5 @@
-from fastapi import Depends, HTTPException, status
+from typing import Dict, Optional
+from fastapi import Depends, Request, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from config.config import settings
 from jwt import InvalidTokenError, decode as jwt_decode
@@ -7,7 +8,35 @@ from models.jwt_token import JWTTokenData
 from models.user import User
 from sqlmodel import Session, select
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+class OAuth2PasswordBearerCookie(OAuth2PasswordBearer):
+    """
+    This class allows to not only fetch the jwt token from the headers
+    but also from a cookie, in case we want to use a secure cookie to store the jwt on the
+    frontend
+    """
+
+    def get_jwt_cookie(self, cookies: Dict[str, str]):
+        jwt = cookies.get("jwt")
+        if not jwt and self.auto_error:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return jwt
+
+    async def __call__(self, request: Request) -> Optional[str]:
+        try:
+            jwt = await super().__call__(request)
+            if not jwt:
+                jwt = self.get_jwt_cookie(request.cookies)
+        except HTTPException:
+            jwt = self.get_jwt_cookie(request.cookies)
+        return jwt
+
+
+oauth2_scheme = OAuth2PasswordBearerCookie(tokenUrl="auth/token")
 
 
 async def get_current_user(

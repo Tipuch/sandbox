@@ -3,11 +3,10 @@ from typing import Optional
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends
 from config.config import settings
 
 from argon2 import PasswordHasher
-from sqlmodel import Field, SQLModel, Session, select
+from sqlmodel import Field, SQLModel, select
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from itsdangerous.exc import SignatureExpired
 
@@ -27,7 +26,7 @@ class UserRead(SQLModel):
     name: str = Field(max_length=500)
     email: str = Field(max_length=500)
     active: bool
-    confirmed_at: datetime
+    confirmed_at: Optional[datetime]
 
 
 class User(SQLModel, table=True):
@@ -45,41 +44,39 @@ class User(SQLModel, table=True):
     pyotp_last_auth_at: Optional[datetime] = Field(default=None, nullable=True)
 
     @classmethod
-    def authenticate_user(
-        cls, email: str, password: str, session: Session = Depends(get_session)
-    ):
-        user = session.exec(select(cls).where(cls.email == email)).first()
-        if not user:
-            return False
-        if not user.verify_password(password):
-            return False
-        return user
+    async def authenticate_user(cls, email: str, password: str):
+        async for session in get_session():
+            user = session.exec(select(cls).where(cls.email == email)).first()
+            if not user:
+                return False
+            if not user.verify_password(password):
+                return False
+            return user
 
-    def encrypt_password(
-        self, raw_password: str, session: Session = Depends(get_session)
-    ) -> str:
+    async def encrypt_password(self, raw_password: str) -> str:
         password_hasher = PasswordHasher()
         hash = password_hasher.hash(raw_password)
         self.password = hash
-        session.add(self)
-        session.commit()
-        session.refresh(self)
+        async for session in get_session():
+            session.add(self)
+            session.commit()
+            session.refresh(self)
         return hash
 
-    def verify_password(self, raw_password: str) -> bool:
+    async def verify_password(self, raw_password: str) -> bool:
         password_hasher = PasswordHasher()
         verified = password_hasher.verify(self.password, raw_password)
         if not verified:
             return False
         if password_hasher.check_needs_rehash(self.password):
-            self.encrypt_password(raw_password)
+            await self.encrypt_password(raw_password)
         return True
 
     def get_activation_link(self) -> str:
         serializer = URLSafeTimedSerializer(settings.SECRET_KEY, salt="activate")
-        return serializer.dumps(self.id)
+        return f"/auth/activate/{serializer.dumps(str(self.id))}"
 
-    def activate(self, token: str, session: Session = Depends(get_session)) -> bool:
+    async def activate(self, token: str) -> bool:
         serializer = URLSafeTimedSerializer(settings.SECRET_KEY, salt="activate")
         valid = False
         try:
@@ -89,24 +86,26 @@ class User(SQLModel, table=True):
                     f"ids do not match, expected {self.id} got {retrieved_id}"
                 )
             self.confirmed_at = datetime.now(timezone.utc)
-            session.add(self)
-            session.commit()
-            session.refresh(self)
+            async for session in get_session():
+                session.add(self)
+                session.commit()
+                session.refresh(self)
             valid = True
         except (BadSignature, SignatureExpired):
             valid = False
 
         return valid
 
-    def set_pyotp_secret(self, session: Session = Depends(get_session)) -> str:
+    async def set_pyotp_secret(self) -> str:
         secret = pyotp.random_base32()
         self.pyotp_secret = secret
-        session.add(self)
-        session.commit()
-        session.refresh(self)
+        async for session in get_session():
+            session.add(self)
+            session.commit()
+            session.refresh(self)
         return secret
 
-    def check_pyotp(self, otp: str, session: Session = Depends(get_session)) -> bool:
+    async def check_pyotp(self, otp: str) -> bool:
         if not self.pyotp_secret:
             return False
         totp = pyotp.TOTP(self.pyotp_secret, interval=settings.PYTOP_INTERVAL)
@@ -119,9 +118,10 @@ class User(SQLModel, table=True):
 
         if totp.verify(otp):
             self.pyotp_last_auth_at = datetime.now(timezone.utc)
-            session.add(self)
-            session.commit()
-            session.refresh(self)
-            return True
 
+            async for session in get_session():
+                session.add(self)
+                session.commit()
+                session.refresh(self)
+            return True
         return False

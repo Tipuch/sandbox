@@ -20,7 +20,7 @@ class Config(BaseSettings):
     ACTIVATION_MAX_AGE: int = 3600 * 24  # 24 hours for the activation link
     PYTOP_INTERVAL: int = 30
     JWT_ALGORITHM: str = "HS512"
-    JWT_EXPIRATION_MINUTES: int = 30
+    JWT_EXPIRATION_MINUTES: int = 1440
 
     model_config = SettingsConfigDict(env_file=".env")
 
