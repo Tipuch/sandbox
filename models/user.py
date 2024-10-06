@@ -81,15 +81,21 @@ class User(SQLModel, table=True):
         valid = False
         try:
             retrieved_id = serializer.loads(token, max_age=settings.ACTIVATION_MAX_AGE)
-            if self.id != retrieved_id:
+            if str(self.id) != retrieved_id:
                 raise BadSignature(
                     f"ids do not match, expected {self.id} got {retrieved_id}"
                 )
             self.confirmed_at = datetime.now(timezone.utc)
             async for session in get_session():
-                session.add(self)
-                session.commit()
-                session.refresh(self)
+                obj_session = session.object_session(self)
+                if obj_session:
+                    obj_session.add(self)
+                    obj_session.commit()
+                    obj_session.refresh(self)
+                else:
+                    session.add(self)
+                    session.commit()
+                    session.refresh(self)
             valid = True
         except (BadSignature, SignatureExpired):
             valid = False
@@ -100,9 +106,15 @@ class User(SQLModel, table=True):
         secret = pyotp.random_base32()
         self.pyotp_secret = secret
         async for session in get_session():
-            session.add(self)
-            session.commit()
-            session.refresh(self)
+            obj_session = session.object_session(self)
+            if obj_session:
+                obj_session.add(self)
+                obj_session.commit()
+                obj_session.refresh(self)
+            else:
+                session.add(self)
+                session.commit()
+                session.refresh(self)
         return secret
 
     async def check_pyotp(self, otp: str) -> bool:

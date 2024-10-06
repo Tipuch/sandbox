@@ -45,9 +45,14 @@ async def get_signup_success(
 ) -> InertiaResponse:
     activation_link = current_user.get_activation_link()
     current_user_read = UserRead.model_validate(current_user)
+    confirmed = bool(current_user_read.confirmed_at)
     return await inertia.render(
         "auth/signup_success",
-        {"current_user": current_user_read, "activation_link": activation_link},
+        {
+            "current_user": current_user_read,
+            "activation_link": activation_link,
+            "confirmed": confirmed,
+        },
     )
 
 

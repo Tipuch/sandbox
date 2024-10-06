@@ -110,6 +110,7 @@
   {/if}
   <form
     action=""
+    class="box"
     method="post"
     bind:this={formElement}
     on:submit|preventDefault={sendData}
