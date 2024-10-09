@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from inertia import InertiaResponse
+from pyotp import totp
 from sqlmodel import Session, select
 
 from config.config import settings
@@ -10,7 +11,7 @@ from db import get_session
 from dependencies.inertia import InertiaDep
 from dependencies.auth import get_current_active_user
 from models.jwt_token import JWTToken
-from models.user import User, UserCreate, UserRead
+from models.user import User, UserCreate, UserRead, UserReadPyotpSecret
 
 router = APIRouter(
     prefix="/auth",
@@ -74,16 +75,25 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     response: Response,
 ):
-    user = await User.authenticate_user(form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    authenticated_user, uses_otp = await User.authenticate_user(
+        form_data.username, form_data.password
+    )
+    if not authenticated_user:
+        if not uses_otp:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password or missing or incorrect OTP",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     access_token_expires = timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
     access_token = JWTToken.create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": authenticated_user.email}, expires_delta=access_token_expires
     )
     response.set_cookie(
         key="jwt",
@@ -94,3 +104,21 @@ async def login_for_access_token(
         expires=(datetime.now(timezone.utc) + access_token_expires),
     )
     return JWTToken(access_token=access_token, token_type="bearer")
+
+
+@router.get("/otp/setup", response_model=None)
+async def setup_otp(
+    inertia: InertiaDep, current_user: User = Depends(get_current_active_user)
+) -> InertiaResponse:
+    has_active_otp = bool(current_user.pyotp_secret)
+    return await inertia.render("/auth/otp_setup", {"has_active_otp": has_active_otp})
+
+
+@router.post("/otp/setup", response_model=UserReadPyotpSecret, status_code=200)
+async def save_otp(current_user: User = Depends(get_current_active_user)):
+    await current_user.set_pyotp_secret()
+    current_user_read = UserReadPyotpSecret.model_validate(current_user)
+    current_user_read.pyotp_uri = totp.TOTP(
+        current_user_read.pyotp_secret
+    ).provisioning_uri(name=current_user_read.email, issuer_name="Sandbox App")
+    return current_user_read

@@ -9,10 +9,11 @@
     const response = await fetch(activation_link, {
       method: "GET",
     });
-    const response_json = await response.json();
-    if (response.status === 200 && response_json.confirmed_at !== null) {
-      current_user = response_json;
+    const responseJson = await response.json();
+    if (response.status === 200 && responseJson.confirmed_at !== null) {
+      current_user = responseJson;
       confirmed = true;
+      location.href = "/auth/otp/setup";
     }
   }
 </script>

@@ -1,5 +1,6 @@
+import argon2
 import pyotp
-from typing import Optional
+from typing import Optional, Self, Tuple
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -29,6 +30,11 @@ class UserRead(SQLModel):
     confirmed_at: Optional[datetime]
 
 
+class UserReadPyotpSecret(UserRead):
+    pyotp_secret: str = Field(default="", max_length=500, nullable=False)
+    pyotp_uri: str = ""
+
+
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     created_at: datetime = Field(default=datetime.now(timezone.utc), nullable=False)
@@ -44,14 +50,30 @@ class User(SQLModel, table=True):
     pyotp_last_auth_at: Optional[datetime] = Field(default=None, nullable=True)
 
     @classmethod
-    async def authenticate_user(cls, email: str, password: str):
+    async def authenticate_user(
+        cls, email: str, password: str
+    ) -> Tuple[Optional[Self], bool]:  # type: ignore
+        """
+        returns user and if the user has pyotp enabled or not
+        """
         async for session in get_session():
             user = session.exec(select(cls).where(cls.email == email)).first()
             if not user:
-                return False
-            if not user.verify_password(password):
-                return False
-            return user
+                return (None, False)
+            elif user.pyotp_secret:
+                print("testing pyotp")
+                otp = password[-6:]
+                password = password[:-6]
+                password_verified = await user.verify_password(password)
+                otp_verified = await user.verify_pyotp(otp)
+                if password_verified and otp_verified:
+                    return (user, True)
+                else:
+                    return (None, False)
+            elif await user.verify_password(password):
+                print("testing only username & password")
+                return (user, False)
+            return (None, False)
 
     async def encrypt_password(self, raw_password: str) -> str:
         password_hasher = PasswordHasher()
@@ -65,7 +87,11 @@ class User(SQLModel, table=True):
 
     async def verify_password(self, raw_password: str) -> bool:
         password_hasher = PasswordHasher()
-        verified = password_hasher.verify(self.password, raw_password)
+        verified = False
+        try:
+            verified = password_hasher.verify(self.password, raw_password)
+        except argon2.exceptions.VerifyMismatchError:
+            return False
         if not verified:
             return False
         if password_hasher.check_needs_rehash(self.password):
@@ -117,7 +143,7 @@ class User(SQLModel, table=True):
                 session.refresh(self)
         return secret
 
-    async def check_pyotp(self, otp: str) -> bool:
+    async def verify_pyotp(self, otp: str) -> bool:
         if not self.pyotp_secret:
             return False
         totp = pyotp.TOTP(self.pyotp_secret, interval=settings.PYTOP_INTERVAL)
@@ -132,8 +158,14 @@ class User(SQLModel, table=True):
             self.pyotp_last_auth_at = datetime.now(timezone.utc)
 
             async for session in get_session():
-                session.add(self)
-                session.commit()
-                session.refresh(self)
+                obj_session = session.object_session(self)
+                if obj_session:
+                    obj_session.add(self)
+                    obj_session.commit()
+                    obj_session.refresh(self)
+                else:
+                    session.add(self)
+                    session.commit()
+                    session.refresh(self)
             return True
         return False
