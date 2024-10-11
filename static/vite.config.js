@@ -7,7 +7,7 @@ export default defineConfig({
     prebundleSvelteLibraries: true,
   })],
   optimizeDeps: {
-    include: ['@inertiajs/inertia'],
+    include: ['@inertiajs/svelte'],
   },
 })
 

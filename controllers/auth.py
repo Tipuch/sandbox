@@ -111,7 +111,7 @@ async def setup_otp(
     inertia: InertiaDep, current_user: User = Depends(get_current_active_user)
 ) -> InertiaResponse:
     has_active_otp = bool(current_user.pyotp_secret)
-    return await inertia.render("/auth/otp_setup", {})
+    return await inertia.render("auth/otp_setup", {"has_active_otp": has_active_otp})
 
 
 @router.post("/otp/setup/{otp}", response_model=UserPyotpSecret, status_code=200)
