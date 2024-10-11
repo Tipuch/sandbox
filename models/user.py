@@ -1,5 +1,6 @@
 import argon2
 import pyotp
+import arrow
 from typing import Optional, Self, Tuple
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -30,7 +31,7 @@ class UserRead(SQLModel):
     confirmed_at: Optional[datetime]
 
 
-class UserReadPyotpSecret(UserRead):
+class UserPyotpSecret(UserRead):
     pyotp_secret: str = Field(default="", max_length=500, nullable=False)
     pyotp_uri: str = ""
 
@@ -131,27 +132,19 @@ class User(SQLModel, table=True):
     async def set_pyotp_secret(self) -> str:
         secret = pyotp.random_base32()
         self.pyotp_secret = secret
-        async for session in get_session():
-            obj_session = session.object_session(self)
-            if obj_session:
-                obj_session.add(self)
-                obj_session.commit()
-                obj_session.refresh(self)
-            else:
-                session.add(self)
-                session.commit()
-                session.refresh(self)
         return secret
 
     async def verify_pyotp(self, otp: str) -> bool:
         if not self.pyotp_secret:
             return False
         totp = pyotp.TOTP(self.pyotp_secret, interval=settings.PYTOP_INTERVAL)
-        last_interval = datetime.now(timezone.utc) - timedelta(
-            seconds=settings.PYTOP_INTERVAL
-        )
+        last_interval = arrow.utcnow() - timedelta(seconds=settings.PYTOP_INTERVAL)
         # here we check to avoid replayability of last valid token
-        if self.pyotp_last_auth_at and self.pyotp_last_auth_at >= last_interval:
+
+        if (
+            self.pyotp_last_auth_at
+            and arrow.get(self.pyotp_last_auth_at, "UTC") >= last_interval
+        ):
             return False
 
         if totp.verify(otp):

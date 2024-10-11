@@ -11,7 +11,7 @@ from db import get_session
 from dependencies.inertia import InertiaDep
 from dependencies.auth import get_current_active_user
 from models.jwt_token import JWTToken
-from models.user import User, UserCreate, UserRead, UserReadPyotpSecret
+from models.user import User, UserCreate, UserRead, UserPyotpSecret
 
 router = APIRouter(
     prefix="/auth",
@@ -111,13 +111,32 @@ async def setup_otp(
     inertia: InertiaDep, current_user: User = Depends(get_current_active_user)
 ) -> InertiaResponse:
     has_active_otp = bool(current_user.pyotp_secret)
-    return await inertia.render("/auth/otp_setup", {"has_active_otp": has_active_otp})
+    return await inertia.render("/auth/otp_setup", {})
 
 
-@router.post("/otp/setup", response_model=UserReadPyotpSecret, status_code=200)
-async def save_otp(current_user: User = Depends(get_current_active_user)):
+@router.post("/otp/setup/{otp}", response_model=UserPyotpSecret, status_code=200)
+async def save_otp(
+    otp: str,
+    user_pyotp: UserPyotpSecret,
+    current_user: User = Depends(get_current_active_user),
+):
+    if current_user.id != user_pyotp.id:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail="current_user id and pyotp_user id are different",
+        )
+
+    current_user.pyotp_secret = user_pyotp.pyotp_secret
+    if not current_user.verify_pyotp(otp):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="OTP invalid.")
+
+    return current_user
+
+
+@router.get("/otp", response_model=UserPyotpSecret, status_code=200)
+async def get_otp(current_user: User = Depends(get_current_active_user)):
     await current_user.set_pyotp_secret()
-    current_user_read = UserReadPyotpSecret.model_validate(current_user)
+    current_user_read = UserPyotpSecret.model_validate(current_user)
     current_user_read.pyotp_uri = totp.TOTP(
         current_user_read.pyotp_secret
     ).provisioning_uri(name=current_user_read.email, issuer_name="Sandbox App")

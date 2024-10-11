@@ -6,4 +6,8 @@ export default defineConfig({
   plugins: [svelte({
     prebundleSvelteLibraries: true,
   })],
+  optimizeDeps: {
+    include: ['@inertiajs/inertia'],
+  },
 })
+
