@@ -137,8 +137,8 @@ class User(SQLModel, table=True):
     async def verify_pyotp(self, otp: str) -> bool:
         if not self.pyotp_secret:
             return False
-        totp = pyotp.TOTP(self.pyotp_secret, interval=settings.PYTOP_INTERVAL)
-        last_interval = arrow.utcnow() - timedelta(seconds=settings.PYTOP_INTERVAL)
+        totp = pyotp.TOTP(self.pyotp_secret, interval=settings.PYOTP_INTERVAL)
+        last_interval = arrow.utcnow() - timedelta(seconds=settings.PYOTP_INTERVAL)
         # here we check to avoid replayability of last valid token
 
         if (

@@ -18,7 +18,7 @@ class Config(BaseSettings):
     DB_URL: str = f"sqlite:///{sqlite_file_name}"
     SECRET_KEY: str = "very_secret_key_make_sure_to_change_it_in_prod"
     ACTIVATION_MAX_AGE: int = 3600 * 24  # 24 hours for the activation link
-    PYTOP_INTERVAL: int = 30
+    PYOTP_INTERVAL: int = 30
     JWT_ALGORITHM: str = "HS512"
     JWT_EXPIRATION_MINUTES: int = 1440
 
