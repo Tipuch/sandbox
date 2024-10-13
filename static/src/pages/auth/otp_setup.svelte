@@ -41,6 +41,7 @@
 
     if (response.status === 200) {
       successMessage = "Your TOTP was configured successfully!";
+      has_active_otp = true;
       setTimeout(() => {
         successMessage = "";
       }, 5000);
