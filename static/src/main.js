@@ -6,9 +6,9 @@ createInertiaApp({
     const pages = import.meta.glob('./pages/**/*.svelte');
     const page = pages[`./pages/${name}.svelte`];
     if (!page) {
-      console.error(`missing page with path: ./pages/${name}.svelte`)
+      console.error(`missing page with path: ./pages/${name}.svelte`);
     }
-    return page;
+    return page();
   },
   setup({ el, App, props }) {
     new App({ target: el, props })

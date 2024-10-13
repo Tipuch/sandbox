@@ -127,7 +127,7 @@ async def save_otp(
         )
 
     current_user.pyotp_secret = user_pyotp.pyotp_secret
-    if not current_user.verify_pyotp(otp):
+    if not await current_user.verify_pyotp(otp):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="OTP invalid.")
 
     return current_user
