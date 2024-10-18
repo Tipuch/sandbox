@@ -35,7 +35,7 @@ async def signup(new_user: UserCreate, session: Session = Depends(get_session)):
             status_code=422, detail="A user with this email already exists."
         )
     db_new_user = User.model_validate(new_user)
-    await db_new_user.encrypt_password(new_user.password)
+    await db_new_user.encrypt_password(new_user.password, session)
 
     return db_new_user
 
@@ -59,9 +59,11 @@ async def get_signup_success(
 
 @router.get("/activate/{activation_token}", response_model=UserRead, status_code=200)
 async def activate(
-    activation_token: str, current_user: User = Depends(get_current_active_user)
+    activation_token: str,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_session),
 ):
-    success = await current_user.activate(activation_token)
+    success = await current_user.activate(activation_token, session)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -74,9 +76,10 @@ async def activate(
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     response: Response,
+    session: Session = Depends(get_session),
 ):
     authenticated_user, uses_otp = await User.authenticate_user(
-        form_data.username, form_data.password
+        form_data.username, form_data.password, session
     )
     if not authenticated_user:
         if not uses_otp:
@@ -119,6 +122,7 @@ async def save_otp(
     otp: str,
     user_pyotp: UserPyotpSecret,
     current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_session),
 ):
     if current_user.id != user_pyotp.id:
         raise HTTPException(
@@ -127,7 +131,7 @@ async def save_otp(
         )
 
     current_user.pyotp_secret = user_pyotp.pyotp_secret
-    if not await current_user.verify_pyotp(otp):
+    if not await current_user.verify_pyotp(otp, session):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="OTP invalid.")
 
     return current_user
@@ -135,7 +139,7 @@ async def save_otp(
 
 @router.get("/otp", response_model=UserPyotpSecret, status_code=200)
 async def get_otp(current_user: User = Depends(get_current_active_user)):
-    await current_user.set_pyotp_secret()
+    current_user.set_pyotp_secret()
     current_user_read = UserPyotpSecret.model_validate(current_user)
     current_user_read.pyotp_uri = totp.TOTP(
         current_user_read.pyotp_secret
