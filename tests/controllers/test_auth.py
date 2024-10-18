@@ -1,6 +1,7 @@
-from models.jwt_token import JWTToken
 import json
+from datetime import datetime, timedelta, timezone
 from models.user import User
+from models.jwt_token import JWTToken
 from sqlmodel import Session, select
 from fastapi.testclient import TestClient
 from tests.fixtures import session_fixture, client_fixture
@@ -10,29 +11,23 @@ from jwt import decode as jwt_decode
 
 async def test_and_signup(session: Session, client: TestClient):
     response = client.post(
-        "/auth/token",
-        data={"username": user.email, "password": "test_password"},
-        headers={"content_type": "application/x-www-form-urlencoded"},
+        "/auth/signup",
+        json={"name": "JP", "email": "test@test.com", "password": "test_password"},
+        headers={"content_type": "application/json"},
     )
-    assert response.status_code == 200
-    cookie = response.cookies.get("jwt")
-    assert cookie is not None
-    payload = jwt_decode(
-        cookie, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-    )
-    username = payload.get("sub")
-    assert username == user.email
+    assert response.status_code == 201
 
     json_string = response.read().decode("utf-8")
     json_dict = json.loads(json_string)
+    assert json_dict["email"] == "test@test.com"
+    assert json_dict["name"] == "JP"
+    assert bool(json_dict["created_at"])
+    assert bool(json_dict["updated_at"])
+    assert json_dict["active"] is True
+    assert json_dict["confirmed_at"] is None
 
-    payload = jwt_decode(
-        json_dict["access_token"],
-        settings.SECRET_KEY,
-        algorithms=[settings.JWT_ALGORITHM],
-    )
-    username = payload.get("sub")
-    assert username == user.email
+    user = session.exec(select(User).where(User.email == "test@test.com")).first()
+    assert user is not None
 
 
 async def test_and_login(session: Session, client: TestClient):
@@ -92,6 +87,21 @@ async def test_and_verify_account_auth(session: Session, client: TestClient):
     assert user.created_at is not None
     assert user.updated_at is not None
     assert user.confirmed_at is None
+
+    access_token_expires = timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
+    access_token = JWTToken.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    client.cookies = [
+        Cookie(
+            key="jwt",
+            value=access_token,
+            secure=True,
+            httponly=True,
+            samesite="strict",
+            expires=(datetime.now(timezone.utc) + access_token_expires),
+        )
+    ]
 
     activation_link = user.get_activation_link()
     # TODO generate logged in cookie first
