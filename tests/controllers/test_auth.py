@@ -1,10 +1,11 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+
+from pyotp import totp
 from models.user import User
 from models.jwt_token import JWTToken
 from sqlmodel import Session, select
 from fastapi.testclient import TestClient
-from http.cookiejar import Cookie
 from tests.fixtures import session_fixture, client_fixture
 from config.config import settings
 from jwt import decode as jwt_decode
@@ -110,4 +111,41 @@ async def test_and_verify_account_auth(session: Session, client: TestClient):
     assert response_data["confirmed_at"] is not None
 
 
-# TODO add tests for pyotp stuff
+async def test_and_get_pyotp(session: Session, client: TestClient):
+    user = User(name="JP", email="test@test.com")
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    assert user.id is not None
+    assert user.name == "JP"
+    assert user.email == "test@test.com"
+    assert user.created_at is not None
+    assert user.updated_at is not None
+    assert user.confirmed_at is None
+
+    access_token_expires = timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
+    access_token = JWTToken.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    client.cookies = [("jwt", access_token)]
+
+    cookie = client.cookies.get("jwt")
+    assert cookie is not None
+    payload = jwt_decode(
+        cookie, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+    )
+    username = payload.get("sub")
+    assert username == user.email
+    response = client.get("/auth/otp")
+    response_data = response.json()
+    assert response.status_code == 200
+    assert response_data["id"] == str(user.id)
+    assert response_data["pyotp_secret"] != ""
+    pyotp = totp.TOTP(response_data["pyotp_secret"])
+
+    response = client.post(f"/auth/otp/setup/{pyotp.now()}", json=response_data)
+    assert response.status_code == 200
+    session.refresh(user)
+    assert user.pyotp_secret != ""
+    assert pyotp.now() == totp.TOTP(user.pyotp_secret).now()
