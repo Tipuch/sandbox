@@ -4,6 +4,7 @@ from models.user import User
 from models.jwt_token import JWTToken
 from sqlmodel import Session, select
 from fastapi.testclient import TestClient
+from http.cookiejar import Cookie
 from tests.fixtures import session_fixture, client_fixture
 from config.config import settings
 from jwt import decode as jwt_decode
@@ -92,25 +93,21 @@ async def test_and_verify_account_auth(session: Session, client: TestClient):
     access_token = JWTToken.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires
     )
-    client.cookies = [
-        Cookie(
-            key="jwt",
-            value=access_token,
-            secure=True,
-            httponly=True,
-            samesite="strict",
-            expires=(datetime.now(timezone.utc) + access_token_expires),
-        )
-    ]
+    client.cookies = [("jwt", access_token)]
 
+    cookie = client.cookies.get("jwt")
+    assert cookie is not None
+    payload = jwt_decode(
+        cookie, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+    )
+    username = payload.get("sub")
+    assert username == user.email
     activation_link = user.get_activation_link()
-    # TODO generate logged in cookie first
-    # and attach to the client before executing the following request
-    # response = client.get(activation_link)
-    # response_data = response.json()
-    # assert response.status_code == 200
-    # assert response_data["id"] == user.id
-    # assert response_data["confirmed_at"] is not None
+    response = client.get(activation_link)
+    response_data = response.json()
+    assert response.status_code == 200
+    assert response_data["id"] == str(user.id)
+    assert response_data["confirmed_at"] is not None
 
 
 # TODO add tests for pyotp stuff
