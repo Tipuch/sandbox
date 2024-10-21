@@ -1,4 +1,8 @@
 from datetime import datetime, timedelta, timezone
+from webauthn.registration.generate_registration_options import (
+    generate_registration_options,
+)
+from webauthn.helpers.options_to_json import options_to_json
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -145,3 +149,30 @@ async def get_otp(current_user: User = Depends(get_current_active_user)):
         current_user_read.pyotp_secret
     ).provisioning_uri(name=current_user_read.email, issuer_name="Sandbox App")
     return current_user_read
+
+
+@router.get("/webauthn", response_model=None)
+async def get_webauthn(
+    inertia: InertiaDep, current_user: User = Depends(get_current_active_user)
+) -> InertiaResponse:
+    current_user_read = UserRead.model_validate(current_user)
+    public_key_credential_options = generate_registration_options(
+        rp_id=settings.DOMAIN_NAME,
+        rp_name=settings.APP_NAME,
+        user_id=str(current_user_read.id).encode(),
+        user_name=current_user_read.email,
+        user_display_name=current_user_read.name,
+    )
+    # generate query for webauthn credentials down below
+    # add other credentials as excluded_credentials
+    # delete last incomplete credential creation operations
+    # before rendering
+    return await inertia.render(
+        "auth/webauthn",
+        {
+            "current_user": current_user_read.model_dump_json(),
+            "public_key_credential_options": options_to_json(
+                public_key_credential_options
+            ),
+        },
+    )

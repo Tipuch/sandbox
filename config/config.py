@@ -21,6 +21,8 @@ class Config(BaseSettings):
     PYOTP_INTERVAL: int = 30
     JWT_ALGORITHM: str = "HS512"
     JWT_EXPIRATION_MINUTES: int = 1440
+    DOMAIN_NAME: str = "localhost"
+    APP_NAME: str = "sandbox"
 
     model_config = SettingsConfigDict(env_file=".env")
 

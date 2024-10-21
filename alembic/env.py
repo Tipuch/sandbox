@@ -8,6 +8,7 @@ from alembic import context
 
 from config.config import settings
 from models.user import User
+from models.passkey import Passkey
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

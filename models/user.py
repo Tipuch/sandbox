@@ -12,8 +12,6 @@ from sqlmodel import Field, SQLModel, Session, select
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 from itsdangerous.exc import SignatureExpired
 
-from db import get_session
-
 
 class UserCreate(SQLModel):
     name: str = Field(max_length=500)

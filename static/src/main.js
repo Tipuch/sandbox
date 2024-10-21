@@ -1,4 +1,5 @@
 import { createInertiaApp } from '@inertiajs/svelte'
+import { mount } from 'svelte';
 
 createInertiaApp({
   id: "app",
@@ -11,7 +12,7 @@ createInertiaApp({
     return page();
   },
   setup({ el, App, props }) {
-    new App({ target: el, props })
+    mount(App, { target: el, props })
   },
 })
 
