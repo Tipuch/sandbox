@@ -1,4 +1,12 @@
 from datetime import datetime, timedelta, timezone
+from fastapi.openapi.models import MediaType
+from webauthn.helpers.structs import (
+    AuthenticatorSelectionCriteria,
+    PublicKeyCredentialDescriptor,
+    PublicKeyCredentialType,
+    ResidentKeyRequirement,
+    UserVerificationRequirement,
+)
 from webauthn.registration.generate_registration_options import (
     generate_registration_options,
 )
@@ -15,6 +23,7 @@ from db import get_session
 from dependencies.inertia import InertiaDep
 from dependencies.auth import get_current_active_user
 from models.jwt_token import JWTToken
+from models.passkey import Passkey
 from models.user import User, UserCreate, UserRead, UserPyotpSecret
 
 router = APIRouter(
@@ -153,26 +162,61 @@ async def get_otp(current_user: User = Depends(get_current_active_user)):
 
 @router.get("/webauthn", response_model=None)
 async def get_webauthn(
-    inertia: InertiaDep, current_user: User = Depends(get_current_active_user)
+    inertia: InertiaDep,
+    current_user: User = Depends(get_current_active_user),
 ) -> InertiaResponse:
     current_user_read = UserRead.model_validate(current_user)
-    public_key_credential_options = generate_registration_options(
-        rp_id=settings.DOMAIN_NAME,
-        rp_name=settings.APP_NAME,
-        user_id=str(current_user_read.id).encode(),
-        user_name=current_user_read.email,
-        user_display_name=current_user_read.name,
-    )
-    # generate query for webauthn credentials down below
-    # add other credentials as excluded_credentials
-    # delete last incomplete credential creation operations
-    # before rendering
     return await inertia.render(
         "auth/webauthn",
         {
             "current_user": current_user_read.model_dump_json(),
-            "public_key_credential_options": options_to_json(
-                public_key_credential_options
-            ),
         },
     )
+
+
+@router.get("/webauthn/registration")
+async def get_webauthn_registration(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+):
+    current_user_read = UserRead.model_validate(current_user)
+    existing_credentials = session.exec(
+        select(Passkey).where(Passkey.user_id == current_user.id)
+    )
+    webauthn_credentials = []
+    for credential in existing_credentials:
+        webauthn_credentials.append(
+            PublicKeyCredentialDescriptor(
+                id=str(credential.id).encode(), type=PublicKeyCredentialType.PUBLIC_KEY
+            )
+        )
+
+    authenticator_selection = AuthenticatorSelectionCriteria(
+        resident_key=ResidentKeyRequirement.DISCOURAGED,
+        user_verification=UserVerificationRequirement.REQUIRED,
+    )
+    try:
+        public_key_credential_options = generate_registration_options(
+            rp_id=settings.DOMAIN_NAME,
+            rp_name=settings.APP_NAME,
+            user_id=str(current_user_read.id).encode(),
+            user_name=current_user_read.email,
+            user_display_name=current_user_read.name,
+            exclude_credentials=webauthn_credentials,
+            authenticator_selection=authenticator_selection,
+            timeout=60000,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return Response(
+        content=options_to_json(public_key_credential_options),
+        media_type="application/json",
+    )
+
+
+@router.post("/webauthn/registration", status_code=200)
+async def register_passkey(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+):
+    pass
