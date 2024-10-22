@@ -22,6 +22,7 @@ class Config(BaseSettings):
     JWT_ALGORITHM: str = "HS512"
     JWT_EXPIRATION_MINUTES: int = 1440
     DOMAIN_NAME: str = "localhost"
+    HTTP_ORIGIN: str = "http://localhost:8000"
     APP_NAME: str = "sandbox"
 
     model_config = SettingsConfigDict(env_file=".env")

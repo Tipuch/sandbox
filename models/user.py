@@ -44,6 +44,7 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, max_length=500, nullable=False)
     password: str = Field(default="", max_length=250, nullable=False)
     active: bool = Field(default=True, nullable=False)
+    webauthn_challenge: Optional[bytes] = Field(default=None, nullable=True)
     confirmed_at: Optional[datetime] = Field(default=None, nullable=True)
     pyotp_secret: str = Field(default="", max_length=500, nullable=False)
     pyotp_last_auth_at: Optional[datetime] = Field(default=None, nullable=True)

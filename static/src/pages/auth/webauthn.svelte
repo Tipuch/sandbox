@@ -21,7 +21,7 @@
 
   async function addAccessKey() {
     try {
-      let registrationOptions = await fetch("/auth/webauthn/registration", {
+      let registrationOptions = await fetch("/auth/webauthn/register", {
         method: "get",
         headers: {
           "Content-Type": "application/json",
@@ -35,13 +35,13 @@
       public_key_registration_options.user.id = base64UrlToBytes(
         public_key_registration_options.user.id,
       );
-      const excludedCredentialsLength =
+      const excludeCredentialsLength =
         public_key_registration_options.excludeCredentials.length;
 
-      for (let i = 0; i < excludedCredentialsLength; i++) {
+      for (let i = 0; i < excludeCredentialsLength; i++) {
         public_key_registration_options.excludeCredentials[i].id =
           base64UrlToBytes(
-            public_key_registration_options.excludedCredentials[i].id,
+            public_key_registration_options.excludeCredentials[i].id,
           );
       }
       console.log(public_key_registration_options);
@@ -53,7 +53,7 @@
 
       const response = await fetch("/auth/webauthn/register", {
         method: "post",
-        body: JSON.stringify({ credential: credential }),
+        body: JSON.stringify(credential),
         headers: {
           "Content-Type": "application/json",
         },

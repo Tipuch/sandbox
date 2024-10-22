@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-from fastapi.openapi.models import MediaType
 from webauthn.helpers.structs import (
     AuthenticatorSelectionCriteria,
     PublicKeyCredentialDescriptor,
@@ -10,7 +9,11 @@ from webauthn.helpers.structs import (
 from webauthn.registration.generate_registration_options import (
     generate_registration_options,
 )
+from webauthn.registration.verify_registration_response import (
+    verify_registration_response,
+)
 from webauthn.helpers.options_to_json import options_to_json
+from webauthn.helpers.exceptions import InvalidRegistrationResponse
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -23,7 +26,7 @@ from db import get_session
 from dependencies.inertia import InertiaDep
 from dependencies.auth import get_current_active_user
 from models.jwt_token import JWTToken
-from models.passkey import Passkey
+from models.passkey import Passkey, PasskeyRegistration
 from models.user import User, UserCreate, UserRead, UserPyotpSecret
 
 router = APIRouter(
@@ -174,7 +177,7 @@ async def get_webauthn(
     )
 
 
-@router.get("/webauthn/registration")
+@router.get("/webauthn/register")
 async def get_webauthn_registration(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user),
@@ -206,6 +209,9 @@ async def get_webauthn_registration(
             authenticator_selection=authenticator_selection,
             timeout=60000,
         )
+        current_user.webauthn_challenge = public_key_credential_options.challenge
+        session.add(current_user)
+        session.commit()
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     return Response(
@@ -214,9 +220,42 @@ async def get_webauthn_registration(
     )
 
 
-@router.post("/webauthn/registration", status_code=200)
+@router.post("/webauthn/register", status_code=201)
 async def register_passkey(
+    credential: PasskeyRegistration,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_active_user),
 ):
-    pass
+    print(credential)
+    print(current_user.webauthn_challenge)
+    if current_user.webauthn_challenge is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The webauthn challenge has not been set or has expired.",
+        )
+    try:
+        verified_registration = verify_registration_response(
+            credential=credential.model_dump(mode="python"),
+            expected_challenge=current_user.webauthn_challenge,
+            expected_rp_id=settings.DOMAIN_NAME,
+            expected_origin=settings.HTTP_ORIGIN,
+            require_user_verification=True,
+        )
+        print(verified_registration)
+        passkey = Passkey(
+            id=verified_registration.credential_id,
+            user_id=current_user.id,
+            attestation=verified_registration.attestation_object,
+            public_key=verified_registration.credential_public_key,
+            format=verified_registration.fmt,
+            aaguid=verified_registration.aaguid,
+            sign_count=verified_registration.sign_count,
+        )
+        current_user.webauthn_challenge = None
+        session.add(passkey)
+        session.add(current_user)
+        session.commit()
+    except InvalidRegistrationResponse as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e)
+        )
