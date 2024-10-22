@@ -124,7 +124,7 @@ sqlalchemy==2.0.36
     #   sqlmodel
 sqlmodel==0.0.19
     # via sandbox (pyproject.toml)
-starlette==0.37.2
+starlette==0.40.0
     # via fastapi
 typer==0.12.5
     # via fastapi-cli
