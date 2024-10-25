@@ -1,9 +1,5 @@
 <script>
-  export let messages;
-  export let errors;
-  export let current_user;
-  export let activation_link;
-  export let confirmed;
+  let { messages, errors, current_user, activation_link, confirmed } = $props();
 
   async function activateAccount() {
     const response = await fetch(activation_link, {
@@ -31,7 +27,7 @@
     </h3>
     <button
       class="button is-secondary"
-      on:click={() => {
+      onclick={() => {
         document.location = "/auth/signup/success";
       }}
     >
@@ -41,7 +37,7 @@
       <span>Refresh the token</span>
     </button>
 
-    <button class="button is-primary" on:click={activateAccount}>
+    <button class="button is-primary" onclick={activateAccount}>
       <span class="icon is-small">
         <i class="fas fa-bold fa-arrow-right fa-solid"></i>
       </span>

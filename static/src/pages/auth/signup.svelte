@@ -1,24 +1,23 @@
 <script>
   import zxcvbn from "zxcvbn";
-  export let messages;
-  export let errors;
+  let { messages, errors } = $props();
 
-  let formElement = null;
-  let formErrorMessage = "";
+  let formElement = $state(null);
+  let formErrorMessage = $state("");
 
-  let email = "";
-  let emailField = null;
-  let emailFieldValid = null;
+  let email = $state("");
+  let emailField = $state(null);
+  let emailFieldValid = $state(null);
 
-  let name = "";
-  let nameField = null;
-  let nameFieldValid = null;
+  let name = $state("");
+  let nameField = $state(null);
+  let nameFieldValid = $state(null);
 
-  let password = "";
-  let passwordField = null;
-  let passwordFieldSuggestions = [];
-  let passwordFieldWarning = "";
-  let passwordFieldValid = null;
+  let password = $state("");
+  let passwordField = $state(null);
+  let passwordFieldSuggestions = $state([]);
+  let passwordFieldWarning = $state("");
+  let passwordFieldValid = $state(null);
 
   function checkName() {
     if (nameField.validity.valid) {
@@ -54,7 +53,8 @@
       passwordFieldValid = false;
     }
   }
-  async function sendData() {
+  async function sendData(e) {
+    event.preventDefault();
     // Associate the FormData object with the form element
     checkName();
     checkEmail();
@@ -104,7 +104,7 @@
   <h2 class="subtitle">Welcome to the sandbox.</h2>
   {#if formErrorMessage !== ""}
     <div class="notification is-danger is-light">
-      <button class="delete" on:click={() => (formErrorMessage = "")}></button>
+      <button class="delete" onclick={() => (formErrorMessage = "")}></button>
       {formErrorMessage}
     </div>
   {/if}
@@ -113,7 +113,7 @@
     class="box"
     method="post"
     bind:this={formElement}
-    on:submit|preventDefault={sendData}
+    onsubmit={sendData}
   >
     <div class="field">
       <label class="label" for="name">Name</label>
@@ -130,7 +130,7 @@
           class:is-success={nameFieldValid}
           bind:value={name}
           bind:this={nameField}
-          on:input={checkName}
+          oninput={checkName}
         />
       </div>
     </div>
@@ -148,7 +148,7 @@
           class:is-success={emailFieldValid}
           bind:value={email}
           bind:this={emailField}
-          on:input={checkEmail}
+          oninput={checkEmail}
           required
         />
         <span class="icon is-small is-left">
@@ -182,7 +182,7 @@
           placeholder="very-secure-password"
           bind:value={password}
           bind:this={passwordField}
-          on:input={checkPassword}
+          oninput={checkPassword}
           required
         />
         <span class="icon is-small is-left">

@@ -1,14 +1,12 @@
 <script>
   import * as QRCode from "qrcode";
-  export let messages;
-  export let errors;
-  export let has_active_otp;
+  let { messages, errors, has_active_otp } = $props();
 
-  let successMessage = "";
-  let errorMessage = "";
-  let pyotpUri = "";
-  let currentUser = null;
-  let otp = "";
+  let successMessage = $state("");
+  let errorMessage = $state("");
+  let pyotpUri = $state("");
+  let currentUser = $state(null);
+  let otp = $state("");
 
   async function generateTOTPSecret() {
     const response = await fetch("/auth/otp");
@@ -30,7 +28,8 @@
     await navigator.clipboard.writeText(pyotpUri);
   }
 
-  async function savePyotpSecret() {
+  async function savePyotpSecret(e) {
+    e.preventDefault();
     const response = await fetch(`/auth/otp/setup/${otp}`, {
       method: "POST",
       body: JSON.stringify(currentUser),
@@ -54,7 +53,7 @@
 <section class="section is-large">
   {#if successMessage !== ""}
     <div class="notification is-success is-light">
-      <button class="delete" on:click={() => (successMessage = "")}></button>
+      <button class="delete" onclick={() => (successMessage = "")}></button>
       {successMessage}
     </div>
   {/if}
@@ -67,17 +66,17 @@
       {/if}
       configured TOTP
     </h3>
-    <button class="button is-primary" on:click={generateTOTPSecret}>
+    <button class="button is-primary" onclick={generateTOTPSecret}>
       <span class="icon is-small">
         <i class="fas fa-bold fa-arrows-rotate fa-solid"></i>
       </span>
       <span>Generate new TOTP secret</span>
     </button>
     <figure class="image is-square qrcode">
-      <canvas id="qrcode" on:click={copyPyotpUri}></canvas>
+      <canvas id="qrcode" onclick={copyPyotpUri}></canvas>
     </figure>
     {#if pyotpUri !== ""}
-      <form action="" on:submit|preventDefault={savePyotpSecret}>
+      <form action="" onsubmit={savePyotpSecret}>
         <div class="field">
           <label class="label" for="name">OTP</label>
           <div class="control">

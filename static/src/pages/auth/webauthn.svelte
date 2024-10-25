@@ -1,8 +1,8 @@
 <script>
   import { onMount } from "svelte";
-  export let current_user;
-  let successMessage = "";
-  let errorMessage = "";
+  let { current_user } = $props();
+  let successMessage = $state("");
+  let errorMessage = $state("");
 
   // reference: https://developer.mozilla.org/en-US/docs/Glossary/Base64#converting_arbitrary_binary_data
   function bytesToBase64Url(bytes) {
@@ -80,7 +80,7 @@
       <button
         class="delete"
         aria-label="Close success message"
-        on:click={() => (successMessage = "")}
+        onclick={() => (successMessage = "")}
       ></button>
       {successMessage}
     </div>
@@ -90,14 +90,14 @@
       <button
         class="delete"
         aria-label="Close error message"
-        on:click={() => (errorMessage = "")}
+        onclick={() => (errorMessage = "")}
       ></button>
       {errorMessage}
     </div>
   {/if}
   <div class="box">
     <h2 class="title">Your Access Keys:</h2>
-    <button class="button is-primary" on:click={addAccessKey}>
+    <button class="button is-primary" onclick={addAccessKey}>
       <span class="icon is-small">
         <i class="fas fa-bold fa-plus fa-solid"></i>
       </span>

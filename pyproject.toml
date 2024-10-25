@@ -6,7 +6,7 @@ authors = ["Tipuch <fiorini751@proton.me>"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-fastapi = "^0.111.0"
+fastapi = "^0.115.3"
 sqlmodel = "^0.0.19"
 pydantic = "^2.7.4"
 pydantic-settings = "^2.5.2"

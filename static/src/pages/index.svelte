@@ -1,9 +1,7 @@
 <script>
   import svelteLogo from "../assets/svelte.svg";
   import viteLogo from "../assets/vite.svg";
-  export let messages;
-  export let errors;
-  export let message;
+  let { messages, errors, message } = $props();
 </script>
 
 <main>
