@@ -32,7 +32,7 @@ fastapi-inertia==1.0.3
     # via sandbox (pyproject.toml)
 idna==3.10
     # via anyio
-jinja2==3.1.5
+jinja2==3.1.6
     # via fastapi-inertia
 mako==1.3.6
     # via alembic
