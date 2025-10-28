@@ -72,7 +72,7 @@ sqlalchemy==2.0.36
     #   sqlmodel
 sqlmodel==0.0.19
     # via sandbox (pyproject.toml)
-starlette==0.41.0
+starlette==0.49.1
     # via fastapi
 types-python-dateutil==2.9.0.20241003
     # via arrow
