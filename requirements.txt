@@ -52,7 +52,7 @@ pydantic-core==2.23.4
     # via pydantic
 pydantic-settings==2.6.0
     # via sandbox (pyproject.toml)
-pyjwt==2.9.0
+pyjwt==2.12.0
     # via sandbox (pyproject.toml)
 pyopenssl==24.2.1
     # via webauthn
