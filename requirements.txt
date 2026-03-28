@@ -20,7 +20,7 @@ cffi==1.17.1
     # via
     #   argon2-cffi-bindings
     #   cryptography
-cryptography==46.0.5
+cryptography==46.0.6
     # via
     #   pyopenssl
     #   webauthn
