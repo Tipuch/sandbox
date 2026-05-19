@@ -30,7 +30,7 @@ fastapi==0.115.3
     #   fastapi-inertia
 fastapi-inertia==1.0.3
     # via sandbox (pyproject.toml)
-idna==3.10
+idna==3.15
     # via anyio
 jinja2==3.1.6
     # via fastapi-inertia
